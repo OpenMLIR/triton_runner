@@ -10,7 +10,7 @@ import json
 class RunnerJITFunction(JITFunction[KernelInterface[T]]):
 
     def get_runner_args_set(self):
-        return {"cubin_dir", "ttir_dir", "ttgir_dir", "llir_dir", "ptx_dir"}
+        return {"cubin_dir", "ttir_dir", "ttgir_dir", "llir_dir", "ptx_dir", "debug_value"}
 
     def get_source_dir_type(self, need_check_lst):
         runner_args_set = self.get_runner_args_set()
@@ -27,6 +27,11 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
     def get_source_dir_type(self, kwargs, options, sigkeys):
         return super().get_source_dir_type(
             [k.lower() for k in kwargs if k not in options.__dict__ and k not in sigkeys])
+
+    def get_debug_value(self, kwargs):
+        for k in kwargs:
+            if k == "debug_value":
+                return k
 
     def run(self, *args, grid, warmup, **kwargs):
         from triton import knobs
@@ -66,6 +71,8 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
 
             # check keyword argument and get source_dir_type
             source_dir_type = self.get_source_dir_type(kwargs, options, sigkeys)
+            debug_value = self.get_debug_value(kwargs)
+            print(kwargs[debug_value])
 
             # constexprs
             constexprs = find_paths_if(sigvals, lambda _, val: val == "constexpr")
