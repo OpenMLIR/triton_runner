@@ -30,6 +30,10 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
 
     def need_debug(self, kwargs):
         return "debug_tensor" in kwargs and "debug_value" in kwargs
+    
+    def add_debug_info_and_return_src(self, source_dir):
+        print(source_dir)
+        return os.path.join(source_dir, f"{self.__name__}.ttir")
 
     def run(self, *args, grid, warmup, **kwargs):
         from triton import knobs
@@ -55,7 +59,7 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
         kernel = kernel_cache.get(key, None)
 
         # Kernel is not cached; we have to compile.
-        if kernel is None:
+        if kernel is None or kwargs["debug"]:
             # options
             options = backend.parse_options(kwargs)
             # signature
@@ -67,12 +71,9 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
             assert "device" not in kwargs, "device option is deprecated; current device will be used"
             assert "stream" not in kwargs, "stream option is deprecated; current stream will be used"
 
-            print(sigkeys)
             # check keyword argument and get source_dir_type
             source_dir_type = self.get_source_dir_type(kwargs, options, sigkeys)
-            is_need_debug = self.need_debug(kwargs)
-            print('is_need_debug', is_need_debug)
-
+            
             # constexprs
             constexprs = find_paths_if(sigvals, lambda _, val: val == "constexpr")
             constexprs = {path: get_iterable_path(list(bound_args.values()), path) for path in constexprs}
@@ -89,6 +90,8 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
             if source_dir_type:
                 source_file_name = f"{self.__name__}.{source_dir_type[:-4]}"
                 src = os.path.join(kwargs[source_dir_type], source_file_name)
+                if self.need_debug(kwargs) and source_dir_type == "ttir_dir":
+                    src = self.add_debug_info_and_return_src(kwargs[source_dir_type])
                 if source_dir_type in {"cubin_dir", "llir_dir", "ptx_dir"}:
                     json_file_name = f"{self.__name__}.json"
                     json_path = os.path.join(kwargs[source_dir_type], json_file_name)
