@@ -54,10 +54,13 @@ def add(x: torch.Tensor, y: torch.Tensor):
     #  - Each torch.tensor object is implicitly converted into a pointer to its first element.
     #  - `triton.jit`'ed functions can be indexed with a launch grid to obtain a callable GPU kernel.
     #  - Don't forget to pass meta-parameters as keywords arguments.
+    debug_tensor = torch.empty_like(y)
     add_kernel[grid](x, y, output, n_elements, BLOCK_SIZE=1024,
                      ttir_dir=triton_runner.get_file_dir(__file__),
+                     debug_tensor=debug_tensor,
                      debug_value="%12"
     )
+    print(debug_tensor)
     # We return a handle to z but, since `torch.cuda.synchronize()` hasn't been called, the kernel is still
     # running asynchronously at this point.
     return output
