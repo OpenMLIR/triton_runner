@@ -10,7 +10,7 @@ import json
 class RunnerJITFunction(JITFunction[KernelInterface[T]]):
 
     def get_runner_args_set(self):
-        return {"cubin_dir", "ttir_dir", "ttgir_dir", "llir_dir", "ptx_dir", "debug_value"}
+        return {"cubin_dir", "ttir_dir", "ttgir_dir", "llir_dir", "ptx_dir", "debug_value", "debug_tensor"}
 
     def get_source_dir_type(self, need_check_lst):
         runner_args_set = self.get_runner_args_set()
@@ -28,10 +28,8 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
         return super().get_source_dir_type(
             [k.lower() for k in kwargs if k not in options.__dict__ and k not in sigkeys])
 
-    def get_debug_value(self, kwargs):
-        for k in kwargs:
-            if k == "debug_value":
-                return k
+    def need_debug(self, kwargs):
+        return "debug_tensor" in kwargs and "debug_value" in kwargs
 
     def run(self, *args, grid, warmup, **kwargs):
         from triton import knobs
@@ -69,10 +67,11 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
             assert "device" not in kwargs, "device option is deprecated; current device will be used"
             assert "stream" not in kwargs, "stream option is deprecated; current stream will be used"
 
+            print(sigkeys)
             # check keyword argument and get source_dir_type
             source_dir_type = self.get_source_dir_type(kwargs, options, sigkeys)
-            debug_value = self.get_debug_value(kwargs)
-            print(kwargs[debug_value])
+            is_need_debug = self.need_debug(kwargs)
+            print('is_need_debug', is_need_debug)
 
             # constexprs
             constexprs = find_paths_if(sigvals, lambda _, val: val == "constexpr")
