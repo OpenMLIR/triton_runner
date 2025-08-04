@@ -8,20 +8,21 @@ import json
 
 
 class RunnerJITFunction(JITFunction[KernelInterface[T]]):
-    pass
+
+    def get_runner_args_set(self):
+        return {"cubin_dir", "ttir_dir", "ttgir_dir", "llir_dir", "ptx_dir"}
+
+    def get_source_dir_type(self, need_check_lst):
+        runner_args_set = self.get_runner_args_set()
+        for k in need_check_lst:
+            if not k in runner_args_set:
+                raise KeyError("Keyword argument %s was specified but unrecognised" % k)
 
 
 class RunnerJITFunctionV3_3_x(RunnerJITFunction[KernelInterface[T]]):
 
     def get_source_dir_type(self, kwargs, options, sigkeys):
-        source_dir_set = {"cubin_dir", "ttir_dir", "ttgir_dir", "llir_dir", "ptx_dir"}
-        for k in [k.lower() for k in kwargs if k not in options.__dict__ and k not in sigkeys]:
-            if not k in source_dir_set:
-                raise KeyError("Keyword argument %s was specified but unrecognised" % k)
-        for k in [k.lower() for k in kwargs if k not in options.__dict__ and k not in sigkeys]:
-            if k in source_dir_set:
-                return k
-        return None
+        return super().get_source_dir_type([k.lower() for k in kwargs if k not in options.__dict__ and k not in sigkeys])
 
     def run(self, *args, grid, warmup, **kwargs):
         from triton._utils import find_paths_if, get_iterable_path
@@ -117,14 +118,7 @@ class RunnerJITFunctionV3_3_x(RunnerJITFunction[KernelInterface[T]]):
 class RunnerJITFunctionV3_2_0(RunnerJITFunction[KernelInterface[T]]):
 
     def get_source_dir_type(self, excess_kwargs, options):
-        source_dir_set = {"cubin_dir", "ttir_dir", "ttgir_dir", "llir_dir", "ptx_dir"}
-        for k in [k.lower() for k in excess_kwargs if k not in options.__dict__]:
-            if not k in source_dir_set:
-                raise KeyError("Keyword argument %s was specified but unrecognised" % k)
-        for k in [k.lower() for k in excess_kwargs if k not in options.__dict__]:
-            if k in source_dir_set:
-                return k
-        return None
+        return super().get_source_dir_type([k.lower() for k in excess_kwargs if k not in options.__dict__])
 
     def run(self, *args, grid, warmup, **kwargs):
         kwargs["debug"] = kwargs.get("debug", False) or os.environ.get("TRITON_DEBUG", "0") == "1"
@@ -230,14 +224,7 @@ class RunnerJITFunctionV3_2_0(RunnerJITFunction[KernelInterface[T]]):
 class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
 
     def get_source_dir_type(self, kwargs, options, sigkeys):
-        source_dir_set = {"cubin_dir", "ttir_dir", "ttgir_dir", "llir_dir", "ptx_dir"}
-        for k in [k.lower() for k in kwargs if k not in options.__dict__ and k not in sigkeys]:
-            if not k in source_dir_set:
-                raise KeyError("Keyword argument %s was specified but unrecognised" % k)
-        for k in [k.lower() for k in kwargs if k not in options.__dict__ and k not in sigkeys]:
-            if k in source_dir_set:
-                return k
-        return None
+        return super().get_source_dir_type([k.lower() for k in kwargs if k not in options.__dict__ and k not in sigkeys])
 
     def run(self, *args, grid, warmup, **kwargs):
         from triton import knobs
