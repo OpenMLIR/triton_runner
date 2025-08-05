@@ -43,7 +43,7 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
         return pattern.sub(replacer, full_text, count=1)
 
     def inject_debug_store(self, full_text, ssa_value):
-        pattern = re.compile(rf'^(?P<indent>\s*){ssa_value}\s*=\s*tt\.load[^\n]*', re.MULTILINE)
+        pattern = re.compile(rf'^(?P<indent>\s*){ssa_value}\s*=\s*(tt\.load|arith\.addf)[^\n]*', re.MULTILINE)
 
         def replacer(match):
             original_line = match.group(0)
