@@ -45,25 +45,38 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
     def inject_debug_store(self, full_text, ssa_value):
         pattern = re.compile(
             rf'^(?P<indent>\s*){ssa_value}\s*=\s*'
-            r'(?:tt\.load|arith\.addf)\s+[^:]+:\s*'
+            r'(?:tt\.load)\s+'
+            r'(?P<op1>%\d+)\s*,\s*(?P<op2>%\d+)[^:]+:\s*'
             r'tensor<(?P<size>\d+)x[^>]*>'
             r'.*?'
             r'loc\((?P<loc>[^)]+)\)', 
             re.MULTILINE
         )
-        def replacer(match):
-            original_line = match.group(0)
-            indent = match.group("indent")
-            size = match.group("size")
-            loc = match.group("loc")
-
-            injected_code = f"""{original_line}
+        def make_replacer(full_text):
+            def replacer(match):
+                original_line = match.group(0)
+                indent = match.group("indent")
+                size = match.group("size")
+                loc = match.group("loc")
+                addptr_value = match.group("op1")
+                op2 = match.group("op2")
+                splat_pattern = re.compile(
+                    rf'^(?P<indent>\s*){addptr_value}\s*=\s*'
+                    r'(?:tt\.addptr)\s+'
+                    r'(?P<op1>%\d+)\s*,\s*(?P<op2>%\d+)',
+                    re.MULTILINE
+                )
+                addptr_match = splat_pattern.search(full_text)
+                if addptr_match:
+                    addptr_op2 = addptr_match.group("op2")
+                injected_code = f"""{original_line}
 {indent}%splat = tt.splat %debug_tensor : !tt.ptr<f32> -> tensor<{size}x!tt.ptr<f32>> loc({loc})
-{indent}%ptr = tt.addptr %splat, %4 : tensor<{size}x!tt.ptr<f32>>, tensor<{size}xi32> loc({loc})
-{indent}tt.store %ptr, {ssa_value}, %6 : tensor<{size}x!tt.ptr<f32>> loc({loc})"""
-            return injected_code
-
-        return pattern.sub(replacer, full_text, count=1)
+{indent}%ptr = tt.addptr %splat, {addptr_op2} : tensor<{size}x!tt.ptr<f32>>, tensor<{size}xi32> loc({loc})
+{indent}tt.store %ptr, {ssa_value}, {op2} : tensor<{size}x!tt.ptr<f32>> loc({loc})"""
+                return injected_code
+            return replacer
+        replacer_with_text = make_replacer(full_text)
+        return pattern.sub(replacer_with_text, full_text, count=1)
 
     def run(self, *args, grid, warmup, **kwargs):
         from triton import knobs
