@@ -57,7 +57,6 @@ def add(x: torch.Tensor, y: torch.Tensor):
     debug_tensor = torch.empty_like(y)
     add_kernel[grid](x, y, output, n_elements, BLOCK_SIZE=1024,
                      ttir_dir=triton_runner.get_file_dir(__file__),
-                     debug=True,
                      debug_tensor=debug_tensor,
                      debug_value="%12"
     )
