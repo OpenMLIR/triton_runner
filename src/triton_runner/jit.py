@@ -59,7 +59,7 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
         kernel = kernel_cache.get(key, None)
 
         # Kernel is not cached; we have to compile.
-        if kernel is None or kwargs["debug"]:
+        if kernel is None:
             # options
             options = backend.parse_options(kwargs)
             # signature
