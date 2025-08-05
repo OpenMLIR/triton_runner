@@ -42,8 +42,8 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
 
         return pattern.sub(replacer, full_text, count=1)
 
-    def inject_debug_store(self, full_text):
-        pattern = re.compile(r'^(?P<indent>\s*)%12\s*=\s*tt\.load[^\n]*', re.MULTILINE)
+    def inject_debug_store(self, full_text, ssa_value):
+        pattern = re.compile(rf'^(?P<indent>\s*){ssa_value}\s*=\s*tt\.load[^\n]*', re.MULTILINE)
 
         def replacer(match):
             original_line = match.group(0)
@@ -52,7 +52,7 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
             injected_code = f"""{original_line}
 {indent}%splat = tt.splat %debug_tensor : !tt.ptr<f32> -> tensor<1024x!tt.ptr<f32>> loc(#loc10)
 {indent}%ptr = tt.addptr %splat, %4 : tensor<1024x!tt.ptr<f32>>, tensor<1024xi32> loc(#loc10)
-{indent}tt.store %ptr, %12, %6 : tensor<1024x!tt.ptr<f32>> loc(#loc10)"""
+{indent}tt.store %ptr, {ssa_value}, %6 : tensor<1024x!tt.ptr<f32>> loc(#loc10)"""
             return injected_code
 
         return pattern.sub(replacer, full_text, count=1)
@@ -117,7 +117,7 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
                 src = os.path.join(kwargs[source_dir_type], source_file_name)
                 if self.need_debug(kwargs) and source_dir_type == "ttir_dir":
                     debug_content = self.insert_debug_tensor_param(open(src, "r").read())
-                    debug_content = self.inject_debug_store(debug_content)
+                    debug_content = self.inject_debug_store(debug_content, kwargs["debug_value"])
                     src = os.path.join(kwargs[source_dir_type], "debug.ttir")
                     with open(src, "w") as file:
                         file.write(debug_content)

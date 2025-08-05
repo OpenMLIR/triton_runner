@@ -58,7 +58,7 @@ def add(x: torch.Tensor, y: torch.Tensor):
     add_kernel[grid](x, y, output, n_elements, BLOCK_SIZE=1024,
                      ttir_dir=triton_runner.get_file_dir(__file__),
                      debug_tensor=debug_tensor,
-                     debug_value="%12"
+                     debug_value="%9"
     )
     print(debug_tensor)
     # We return a handle to z but, since `torch.cuda.synchronize()` hasn't been called, the kernel is still
