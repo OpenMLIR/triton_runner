@@ -55,7 +55,7 @@ def add(x: torch.Tensor, y: torch.Tensor):
     #  - `triton.jit`'ed functions can be indexed with a launch grid to obtain a callable GPU kernel.
     #  - Don't forget to pass meta-parameters as keywords arguments.
     debug_tensor = torch.empty_like(y)
-    # debug_value can be "%9", "12%" or "%13"
+    # debug_value can be "%9", "%12" or "%13"
     add_kernel[grid](x, y, output, n_elements, BLOCK_SIZE=1024,
                      ttir_dir=triton_runner.get_file_dir(__file__),
                      debug_tensor=debug_tensor,
