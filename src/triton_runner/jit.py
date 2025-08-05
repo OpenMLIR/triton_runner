@@ -43,16 +43,24 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
         return pattern.sub(replacer, full_text, count=1)
 
     def inject_debug_store(self, full_text, ssa_value):
-        pattern = re.compile(rf'^(?P<indent>\s*){ssa_value}\s*=\s*(tt\.load|arith\.addf)[^\n]*', re.MULTILINE)
-
+        pattern = re.compile(
+            rf'^(?P<indent>\s*){ssa_value}\s*=\s*'
+            r'(?:tt\.load|arith\.addf)\s+[^:]+:\s*'
+            r'tensor<(?P<size>\d+)x[^>]*>'
+            r'.*?'
+            r'loc\((?P<loc>[^)]+)\)', 
+            re.MULTILINE
+        )
         def replacer(match):
             original_line = match.group(0)
             indent = match.group("indent")
+            size = match.group("size")
+            loc = match.group("loc")
 
             injected_code = f"""{original_line}
-{indent}%splat = tt.splat %debug_tensor : !tt.ptr<f32> -> tensor<1024x!tt.ptr<f32>> loc(#loc10)
-{indent}%ptr = tt.addptr %splat, %4 : tensor<1024x!tt.ptr<f32>>, tensor<1024xi32> loc(#loc10)
-{indent}tt.store %ptr, {ssa_value}, %6 : tensor<1024x!tt.ptr<f32>> loc(#loc10)"""
+{indent}%splat = tt.splat %debug_tensor : !tt.ptr<f32> -> tensor<{size}x!tt.ptr<f32>> loc({loc})
+{indent}%ptr = tt.addptr %splat, %4 : tensor<{size}x!tt.ptr<f32>>, tensor<{size}xi32> loc({loc})
+{indent}tt.store %ptr, {ssa_value}, %6 : tensor<{size}x!tt.ptr<f32>> loc({loc})"""
             return injected_code
 
         return pattern.sub(replacer, full_text, count=1)
