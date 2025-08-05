@@ -5,6 +5,7 @@ from typing import Callable, Iterable, Optional, Union, overload
 from .compiler import native_compile
 import os
 import json
+import re
 
 
 class RunnerJITFunction(JITFunction[KernelInterface[T]]):
@@ -30,10 +31,31 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
 
     def need_debug(self, kwargs):
         return "debug_tensor" in kwargs and "debug_value" in kwargs
-    
-    def add_debug_info_and_return_src(self, source_dir):
-        print(source_dir)
-        return os.path.join(source_dir, f"{self.__name__}.ttir")
+
+    def insert_debug_tensor_param(self, full_text):
+        pattern = re.compile(r'(tt\.func\s+public\s+@\w+\s*)\((.*?)\)(\s*attributes\s*{[^}]*}\s*{)', re.DOTALL)
+
+        def replacer(match):
+            prefix, args_str, suffix = match.groups()
+            new_args_str = args_str + ', %debug_tensor: !tt.ptr<f32>'
+            return f"{prefix}({new_args_str}){suffix}"
+
+        return pattern.sub(replacer, full_text, count=1)
+
+    def inject_debug_store(self, full_text):
+        pattern = re.compile(r'^(?P<indent>\s*)%12\s*=\s*tt\.load[^\n]*', re.MULTILINE)
+
+        def replacer(match):
+            original_line = match.group(0)
+            indent = match.group("indent")
+
+            injected_code = f"""{original_line}
+{indent}%splat = tt.splat %debug_tensor : !tt.ptr<f32> -> tensor<1024x!tt.ptr<f32>> loc(#loc10)
+{indent}%ptr = tt.addptr %splat, %4 : tensor<1024x!tt.ptr<f32>>, tensor<1024xi32> loc(#loc10)
+{indent}tt.store %ptr, %12, %6 : tensor<1024x!tt.ptr<f32>> loc(#loc10)"""
+            return injected_code
+
+        return pattern.sub(replacer, full_text, count=1)
 
     def run(self, *args, grid, warmup, **kwargs):
         from triton import knobs
@@ -73,7 +95,10 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
 
             # check keyword argument and get source_dir_type
             source_dir_type = self.get_source_dir_type(kwargs, options, sigkeys)
-            
+            if self.need_debug(kwargs) and source_dir_type == "ttir_dir":
+                signature["debug_tensor"] = "*fp32"
+                bound_args["debug_tensor"] = kwargs["debug_tensor"]
+
             # constexprs
             constexprs = find_paths_if(sigvals, lambda _, val: val == "constexpr")
             constexprs = {path: get_iterable_path(list(bound_args.values()), path) for path in constexprs}
@@ -91,7 +116,11 @@ class RunnerJITFunctionV3_4_0(RunnerJITFunction[KernelInterface[T]]):
                 source_file_name = f"{self.__name__}.{source_dir_type[:-4]}"
                 src = os.path.join(kwargs[source_dir_type], source_file_name)
                 if self.need_debug(kwargs) and source_dir_type == "ttir_dir":
-                    src = self.add_debug_info_and_return_src(kwargs[source_dir_type])
+                    debug_content = self.insert_debug_tensor_param(open(src, "r").read())
+                    debug_content = self.inject_debug_store(debug_content)
+                    src = os.path.join(kwargs[source_dir_type], "debug.ttir")
+                    with open(src, "w") as file:
+                        file.write(debug_content)
                 if source_dir_type in {"cubin_dir", "llir_dir", "ptx_dir"}:
                     json_file_name = f"{self.__name__}.json"
                     json_path = os.path.join(kwargs[source_dir_type], json_file_name)
