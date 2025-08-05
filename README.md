@@ -20,13 +20,13 @@ python examples/python_runner/matmul.py
 
 python examples/ttir_runner/matmul.py
 
-python examples/ttgir_runner/sm90/matmul-with-tma-v3.py
+python examples/ttgir_runner/sm90/matmul-with-tma-v4.py
 
-python examples/llir_runner/sm90/matmul-with-tma-v3.py
+python examples/llir_runner/sm90/matmul-with-tma-v4.py
 
-python examples/ptx_runner/sm90/matmul-with-tma-v3.py
+python examples/ptx_runner/sm90/matmul-with-tma-v4.py
 
-python examples/cubin_runner/sm90/matmul-with-tma-v3.py
+python examples/cubin_runner/sm90/matmul-with-tma-v4.py
 ```
 
 ## Benchmarks

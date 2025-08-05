@@ -13,13 +13,13 @@ python examples/python_runner/matmul.py
 
 python examples/ttir_runner/matmul.py
 
-python examples/ttgir_runner/sm90/matmul-with-tma-v3.py
+python examples/ttgir_runner/sm90/matmul-with-tma-v4.py
 
-python examples/llir_runner/sm90/matmul-with-tma-v3.py
+python examples/llir_runner/sm90/matmul-with-tma-v4.py
 
-python examples/ptx_runner/sm90/matmul-with-tma-v3.py
+python examples/ptx_runner/sm90/matmul-with-tma-v4.py
 
-python examples/cubin_runner/sm90/matmul-with-tma-v3.py
+python examples/cubin_runner/sm90/matmul-with-tma-v4.py
 ```
 
 更多target示例，请参阅 [examples](./doc/examples_v3.4.0.md)。如果没有你的target示例，你需要使用`TRITON_CACHE_DIR=$PWD/.cache` 得到对应的源文件之后再运行。
